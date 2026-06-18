@@ -27,18 +27,25 @@ export default function Navbar() {
     setAuthLoading(true);
     setAuthError(null);
 
-    const action = authTab === "signin" ? signInWithEmail : signUpWithEmail;
-    const { error } = await action(email, password);
+    try {
+      const action = authTab === "signin" ? signInWithEmail : signUpWithEmail;
+      const { error } = await action(email, password);
 
-    setAuthLoading(false);
-
-    if (error) {
-      setAuthError(error.message || "Authentication failed.");
-    } else {
-      setShowAuthModal(false);
-      setEmail("");
-      setPassword("");
-      router.push("/dashboard");
+      if (error) {
+        setAuthError(error.message || "Authentication failed.");
+      } else {
+        setShowAuthModal(false);
+        setEmail("");
+        setPassword("");
+        router.push("/dashboard");
+      }
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      setAuthError(
+        errMsg || "Failed to reach Auth server. Please verify your NEXT_PUBLIC_SUPABASE_URL config."
+      );
+    } finally {
+      setAuthLoading(false);
     }
   };
 
