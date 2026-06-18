@@ -1,0 +1,5 @@
+{
+    "beam stress": "The normal stress in a beam due to bending is calculated using the flexure formula: σ = -My / I, where M is the bending moment at the section, y is the perpendicular distance from the neutral axis, and I is the area moment of inertia of the cross-section. For a rectangular beam of width b and height h, I = (bh^3) / 12.",
+    "ohm's law": "Ohm's law states that the current (I) through a conductor between two points is directly proportional to the voltage (V) across the two points. The mathematical equation is V = IR, where R is the resistance of the conductor in ohms. This fundamental principle is used to calculate requirements for circuit components.",
+    "young's modulus": "Young's modulus (E), also known as the elastic modulus, is a mechanical property that measures the tensile stiffness of a solid material. It quantifies the relationship between tensile stress (σ) and axial strain (ε) in the linear elastic region of a material: E = σ / ε. Common values include ~200 GPa for steel and ~70 GPa for aluminum."
+}
