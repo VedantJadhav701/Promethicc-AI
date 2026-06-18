@@ -70,6 +70,18 @@ async def check_disclaimer_accepted(
     Returns:
         True if a matching acceptance row exists, False otherwise.
     """
+    from app.database import is_local_mode, get_connection
+    if is_local_mode(settings.SUPABASE_URL):
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT 1 FROM disclaimer_acceptances WHERE user_id = ? AND expert = ?",
+            (user_id, expert)
+        )
+        row = cursor.fetchone()
+        conn.close()
+        return row is not None
+
     url = (
         f"{settings.SUPABASE_URL}/rest/v1/disclaimer_acceptances"
         f"?user_id=eq.{user_id}&expert=eq.{expert}&select=id"
@@ -92,6 +104,25 @@ async def accept_disclaimer(
         user_id: Supabase auth user UUID.
         expert: Expert slug (e.g. 'med', 'law').
     """
+    from app.database import is_local_mode, get_connection
+    if is_local_mode(settings.SUPABASE_URL):
+        import uuid
+        import sqlite3
+        conn = get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                "INSERT INTO disclaimer_acceptances (id, user_id, expert) VALUES (?, ?, ?)",
+                (str(uuid.uuid4()), user_id, expert)
+            )
+            conn.commit()
+            logger.info("Disclaimer accepted (SQLite): user=%s expert=%s", user_id, expert)
+        except sqlite3.IntegrityError:
+            pass
+        finally:
+            conn.close()
+        return
+
     url = f"{settings.SUPABASE_URL}/rest/v1/disclaimer_acceptances"
     payload = {
         "user_id": user_id,

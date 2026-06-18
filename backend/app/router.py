@@ -10,7 +10,7 @@ import logging
 from typing import Any, Literal
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response
 from pydantic import BaseModel
 
 from app.auth import User, get_current_user
@@ -419,11 +419,15 @@ async def _post_inference_logging(
 # ---------------------------------------------------------------------------
 
 
-@router.post("/disclaimers/{expert}/accept", status_code=status.HTTP_204_NO_CONTENT)
+@router.post(
+    "/disclaimers/{expert}/accept",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+)
 async def accept_disclaimer_endpoint(
     expert: str,
     user: User = Depends(get_current_user),
-) -> None:
+):
     """Accept the disclaimer for a high-stakes expert.
 
     Args:

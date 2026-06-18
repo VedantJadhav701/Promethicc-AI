@@ -132,6 +132,37 @@ def main() -> None:
 
     total_inserted = 0
 
+    from app.database import is_local_mode, get_connection
+    import uuid
+
+    if is_local_mode(settings.SUPABASE_URL):
+        logger.info("Local mode detected. Ingesting into SQLite database.")
+        from app.database import init_db
+        init_db()
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        # Clear existing rows to avoid duplicate seed documents on re-runs
+        cursor.execute("DELETE FROM rag_documents")
+        conn.commit()
+
+        for namespace, file_path in files:
+            entries = _load_entries(file_path)
+            logger.info("Ingesting %d entries from %s (SQLite)", len(entries), file_path)
+            for entry in entries:
+                row = _build_row(namespace, entry)
+                if not row["content"]:
+                    continue
+                cursor.execute(
+                    "INSERT INTO rag_documents (id, expert, source_title, source_url, content) VALUES (?, ?, ?, ?, ?)",
+                    (str(uuid.uuid4()), row["expert"], row["source_title"], row["source_url"], row["content"])
+                )
+                total_inserted += 1
+        conn.commit()
+        conn.close()
+        logger.info("Ingestion complete. Total rows inserted (SQLite): %d", total_inserted)
+        return
+
     with httpx.Client(timeout=30.0) as client:
         for namespace, file_path in files:
             entries = _load_entries(file_path)

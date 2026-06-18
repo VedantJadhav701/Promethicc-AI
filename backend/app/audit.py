@@ -46,6 +46,23 @@ async def log_usage(
         mode: 'offline' or 'online'.
         tokens_used: Number of tokens consumed.
     """
+    from app.database import is_local_mode, get_connection
+    if is_local_mode(settings.SUPABASE_URL):
+        import uuid
+        conn = get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                "INSERT INTO usage_log (id, user_id, expert, mode, tokens_used) VALUES (?, ?, ?, ?, ?)",
+                (str(uuid.uuid4()), user_id, expert, mode, tokens_used)
+            )
+            conn.commit()
+        except Exception as exc:
+            logger.error("Failed to write SQLite usage_log: %s", exc)
+        finally:
+            conn.close()
+        return
+
     url = f"{settings.SUPABASE_URL}/rest/v1/usage_log"
     payload = {
         "user_id": user_id,
@@ -84,6 +101,23 @@ async def log_audit(
         emergency_triggered: Whether the emergency detector fired.
         success: Whether the request completed successfully.
     """
+    from app.database import is_local_mode, get_connection
+    if is_local_mode(settings.SUPABASE_URL):
+        import uuid
+        conn = get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                "INSERT INTO audit_log (id, user_id, expert, mode, query, jurisdiction, emergency_triggered, success) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (str(uuid.uuid4()), user_id, expert, mode, query, jurisdiction, 1 if emergency_triggered else 0, 1 if success else 0)
+            )
+            conn.commit()
+        except Exception as exc:
+            logger.error("Failed to write SQLite audit_log: %s", exc)
+        finally:
+            conn.close()
+        return
+
     url = f"{settings.SUPABASE_URL}/rest/v1/audit_log"
     payload = {
         "user_id": user_id,
@@ -122,6 +156,26 @@ async def check_rate_limit(
     Returns:
         True if the user is under the limit, False if exceeded.
     """
+    from app.database import is_local_mode, get_connection
+    if is_local_mode(settings.SUPABASE_URL):
+        from datetime import timedelta
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=window_hours)
+        conn = get_connection()
+        cursor = conn.cursor()
+        try:
+            # SQLite stores dates as strings by default or we can filter via datetime
+            cursor.execute(
+                "SELECT COUNT(id) FROM usage_log WHERE user_id = ? AND mode = 'offline' AND created_at >= ?",
+                (user_id, cutoff.strftime("%Y-%m-%d %H:%M:%S"))
+            )
+            total = cursor.fetchone()[0]
+            return total < daily_cap
+        except Exception as exc:
+            logger.error("SQLite Rate limit check failed: %s", exc)
+            return True
+        finally:
+            conn.close()
+
     cutoff = datetime.now(timezone.utc).replace(
         microsecond=0,
     )

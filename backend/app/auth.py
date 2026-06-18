@@ -38,6 +38,11 @@ async def verify_jwt(token: str) -> dict:
         HTTPException: 401 if the token is expired, malformed, or invalid.
     """
     try:
+        from app.database import is_local_mode
+        if is_local_mode(settings.SUPABASE_URL):
+            # In local mode, bypass signature verification to support mock tokens
+            return jwt.decode(token, options={"verify_signature": False})
+
         decoded: dict = jwt.decode(
             token,
             settings.SUPABASE_JWT_SECRET,

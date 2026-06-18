@@ -74,6 +74,11 @@ async def _rpc_search(
     Returns:
         List of result dicts, or None if the RPC does not exist.
     """
+    from app.database import is_local_mode
+    if is_local_mode(settings.SUPABASE_URL):
+        # Fall through to _fallback_search SQLite implementation
+        return None
+
     url = f"{settings.SUPABASE_URL}/rest/v1/rpc/search_rag_documents"
     payload = {
         "p_namespace": namespace,
@@ -110,6 +115,31 @@ async def _fallback_search(
     Returns:
         List of result dicts.
     """
+    from app.database import is_local_mode, get_connection
+    if is_local_mode(settings.SUPABASE_URL):
+        conn = get_connection()
+        cursor = conn.cursor()
+        search_term = f"%{query}%"
+        try:
+            cursor.execute(
+                "SELECT content, source_title, source_url FROM rag_documents WHERE expert = ? AND content LIKE ? LIMIT ?",
+                (namespace, search_term, top_k)
+            )
+            rows = cursor.fetchall()
+            return [
+                {
+                    "content": r["content"],
+                    "source_title": r["source_title"],
+                    "source_url": r["source_url"] or "",
+                }
+                for r in rows
+            ]
+        except Exception as exc:
+            logger.error("SQLite RAG search failed: %s", exc)
+            return []
+        finally:
+            conn.close()
+
     search_term = f"%{query}%"
     url = (
         f"{settings.SUPABASE_URL}/rest/v1/rag_documents"

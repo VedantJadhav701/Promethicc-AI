@@ -29,6 +29,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         Control back to the framework after startup tasks complete.
     """
     logger.info("Promethicc AI backend starting up")
+    try:
+        from app.database import init_db
+        init_db()
+        logger.info("Local SQLite database initialized")
+    except Exception as exc:
+        logger.error("Failed to initialize local SQLite database: %s", exc)
     logger.info("Offline model will be loaded lazily on first request")
     yield
     logger.info("Promethicc AI backend shutting down")
