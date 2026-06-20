@@ -50,6 +50,7 @@ def _load_model() -> object:
             model_path=settings.MODEL_PATH,
             n_ctx=settings.MODEL_CONTEXT_SIZE,
             n_threads=threads,
+            n_gpu_layers=-1,
             verbose=False,
         )
         logger.info("GGUF model loaded from %s (n_threads=%d)", settings.MODEL_PATH, threads)
