@@ -41,12 +41,18 @@ def _load_model() -> object:
         )
 
     try:
+        import os
+        cpu_count = os.cpu_count() or 4
+        # Optimize thread count for hybrid CPUs (like Intel Alder Lake) to prevent E-core latency
+        threads = max(1, cpu_count // 2 if cpu_count > 4 else cpu_count)
+
         model = Llama(
             model_path=settings.MODEL_PATH,
             n_ctx=settings.MODEL_CONTEXT_SIZE,
+            n_threads=threads,
             verbose=False,
         )
-        logger.info("GGUF model loaded from %s", settings.MODEL_PATH)
+        logger.info("GGUF model loaded from %s (n_threads=%d)", settings.MODEL_PATH, threads)
         return model
     except Exception as exc:
         logger.error("Failed to load GGUF model: %s", exc)
@@ -116,14 +122,27 @@ def _run_inference(messages: list[dict[str, str]]) -> tuple[str, int]:
     Returns:
         Tuple of (response_text, tokens_used).
     """
+    import time
     model = _get_model()
+
+    start_time = time.perf_counter()
     result = model.create_chat_completion(  # type: ignore[union-attr]
         messages=messages,
         max_tokens=settings.MODEL_MAX_TOKENS,
         temperature=0.7,
     )
+    duration = time.perf_counter() - start_time
+
     text: str = result["choices"][0]["message"]["content"]  # type: ignore[index]
     tokens: int = result.get("usage", {}).get("total_tokens", 0)  # type: ignore[union-attr]
+
+    tps = tokens / duration if duration > 0 else 0
+    logger.info(
+        "Offline inference completed: %d tokens generated in %.2f seconds (%.2f tokens/sec)",
+        tokens,
+        duration,
+        tps,
+    )
     return text.strip(), tokens
 
 
