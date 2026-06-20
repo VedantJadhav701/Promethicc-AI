@@ -80,4 +80,11 @@ def _load_experts(path: Path) -> dict[str, ExpertConfig]:
 
 
 settings = Settings()
+
+# Resolve relative MODEL_PATH to an absolute path relative to backend root
+if settings.MODEL_PATH:
+    _model_path = Path(settings.MODEL_PATH)
+    if not _model_path.is_absolute():
+        settings.MODEL_PATH = str((Path(__file__).parent.parent / _model_path).resolve())
+
 experts: dict[str, ExpertConfig] = _load_experts(_YAML_PATH)
