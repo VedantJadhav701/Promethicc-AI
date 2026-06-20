@@ -62,8 +62,17 @@ export function useChat(
         const assistantMsg: Message = {
           id: crypto.randomUUID(),
           role: "assistant",
-          content: response.reply,
-          sources: response.sources,
+          content: response.response,
+          sources: response.sources?.map((url) => {
+            let title = url;
+            try {
+              const parsed = new URL(url);
+              title = parsed.hostname.replace("www.", "");
+            } catch {
+              // Ignore
+            }
+            return { title, url };
+          }) || [],
           timestamp: new Date(),
         };
 

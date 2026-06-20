@@ -46,8 +46,8 @@ export interface Source {
 export interface ChatResponse {
   expert: ExpertId;
   mode: ExpertMode;
-  reply: string;
-  sources?: Source[];
+  response: string;
+  sources: string[];
   usage?: UsageData;
 }
 
